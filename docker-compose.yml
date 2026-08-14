@@ -1,0 +1,75 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: meetup_rsvp_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: meetup_rsvp
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: app_password
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Auto-executed by the official MySQL image on first boot
+      # against an EMPTY data directory — this is what creates the
+      # schema and seeds the demo users/events. No manual step needed.
+      - ./backend/src/db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-proot_password']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks:
+      - meetup_net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: meetup_rsvp_backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: meetup_rsvp
+      DB_USER: app_user
+      DB_PASSWORD: app_password
+      JWT_SECRET: dev_jwt_secret_change_me
+      JWT_EXPIRES_IN: 8h
+    ports:
+      - '4000:4000'
+    networks:
+      - meetup_net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked into the client bundle at build time. Since the
+        # browser (not the frontend container) calls this URL
+        # directly, it must be reachable from the host machine —
+        # so we point it at localhost, not the Docker service name.
+        NEXT_PUBLIC_API_URL: http://localhost:4000
+    container_name: meetup_rsvp_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '3000:3000'
+    networks:
+      - meetup_net
+
+networks:
+  meetup_net:
+    driver: bridge
+
+volumes:
+  mysql_data:
