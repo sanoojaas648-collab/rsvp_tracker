@@ -1,8 +1,7 @@
 # Local Meetup RSVP Tracker
 
 A full-stack app for creating local meetups, browsing what other people have
-created, and RSVPing (going / maybe / declined). Built for the Dexqbit Full
-Stack Engineer assignment.
+created, and RSVPing (going / maybe / declined).
 
 ## How to run
 
